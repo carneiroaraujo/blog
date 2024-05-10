@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "nodemon index.js",
+    "test": "node --test",
     "dev": "nodemon index.js"
   },
   "author": "",
