@@ -1,5 +1,6 @@
 
 const express = require("express")
+require("express-async-errors")
 const blogsRouter = require("./controllers/blogs")
 const app = express()
 
