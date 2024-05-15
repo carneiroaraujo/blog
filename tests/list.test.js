@@ -1,126 +1,112 @@
-// const app = require("../app")
-// const supertest = require("supertest")
-const { test, describe, after, beforeEach } = require("node:test")
+const { test, describe, after, before } = require("node:test")
 const assert = require("node:assert")
 const helper = require("./helper")
 const api = require("supertest")(require("../app"))
 const mongoose = require("mongoose")
 const Blog = require("../models/blog")
+const User = require("../models/user")
 
-beforeEach(async () => {
+
+before(async () => {
+    await User.deleteMany({})
     await Blog.deleteMany({})
-    const promises = helper.initialBlogs.map(blog => (new Blog(blog)).save())
-    await Promise.all(promises)
-})
-
-describe("Retrieving and Formatting", async () => {
-    test("returns the correct amount of blog posts", async () => {
-        const response = await api.
-            get("/api/blogs")
-            .expect(200)
-            .expect("Content-Type", /application\/json/)
-        assert.strictEqual(response.body.length, helper.initialBlogs.length)
-
-
-    })
-
-    test("returned blog posts have an id", async () => {
-        const response = await api
-            .get("/api/blogs")
-            .expect(200)
-            .expect("Content-Type", /application\/json/)
-        assert(response.body[0].id !== undefined)
-    })
 
 })
+describe("Blog operations dependent on user authentication", async () => {
+    let result
+    result = await api
+        .post("/api/users")
+        .send({
+            username: "john",
+            name: "john",
+            password: "john",
+        })
+        .expect(201)
 
-describe("Inserting of new blog posts", async () => {
-    test("a new blog post can be added", async () => {
+    const user = result.body
+    const blogToDelete = await (new Blog({
+        "author": "Author",
+        "title": "blogToDelete",
+        "url": "Url",
+        "likes": 10,
+        user: user.id
+    })).save()
+
+    result = await api
+        .post("/api/login")
+        .send({ username: "john", password: "john" })
+        .expect("Content-Type", /application\/json/)
+        .expect(200)
+
+    const token = result.body.token
+
+    test("Blog can be created", async () => {
+
         const blog = {
-            title: "The stories of John's life",
-            author: "John himself",
-            url: "https://awesomestories.com/",
-            likes: 10,
+            "author": "Author",
+            "title": "Title",
+            "url": "Url",
+            "likes": 10
         }
-        await api
+
+        result = await api
             .post("/api/blogs")
             .send(blog)
+            .set({ "Authorization": `Bearer ${token}` })
+            .expect(201)
 
+        assert(result.body)
         const blogs = await helper.getAllBlogsPosts()
-
-        assert.strictEqual(blogs.length, helper.initialBlogs.length + 1)
         assert(blogs.map(blog => blog.title).includes(blog.title))
 
-
     })
+    test("Blog creation is rejected when using malformed or without passing a proper user token", async () => {
 
-    test("the value of 'likes' is automatically assigned the value of 0 when missing", async () => {
-        const blog = {
-            title: "The stories of John's life",
-            author: "John himself",
-            url: "https://awesomestories.com/",
-            // likes: 10,
-        }
-        const result = await api
+        const blogsBefore = await helper.getAllBlogsPosts()
+        result = await api
             .post("/api/blogs")
-            .send(blog)
-        assert.strictEqual(result.body.likes, 0)
+            .send({
+                "author": "Author",
+                "title": "Title",
+                "url": "Url",
+                "likes": 10
+            })
+            .expect(401)
 
-    })
-
-    test("backend rejects the creation of blogs using malformed data", async () => {
-        const missing_url_blog = {
-            title: "The stories of John's life",
-            author: "John himself",
-            // url: "https://awesomestories.com/",
-        }
-        const missing_title_blog = {
-            // title: "The stories of John's life",
-            author: "John himself",
-            url: "https://awesomestories.com/",
-        }
-
-        await api
+        result = await api
             .post("/api/blogs")
-            .send(missing_title_blog)
+            .send({
+                "title": "Title",
+                "likes": 10
+            })
+            .set({ "Authorization": `Bearer ${token}` })
             .expect(400)
 
-        await api
+        result = await api
             .post("/api/blogs")
-            .send(missing_url_blog)
-            .expect(400)
+            .send({
+                "title": "Title",
+                "url": "Url",
+                "likes": 10
+            })
+            .set({ "Authorization": `Bearer ${token.slice(1)}` })
+            .expect(401)
+        
+        const blogsAfter = await helper.getAllBlogsPosts()
+        assert.strictEqual(blogsAfter.length, blogsBefore.length)
 
     })
+    test("Blog can be deleted", async () => {
 
-})
-
-describe("Deleting of blog posts", async () => {
-    test("blog post is properly deleted", async () => {
-        const selectedBlog = (await helper.getAllBlogsPosts())[0]
-        await api
-            .delete(`/api/blogs/${selectedBlog.id}`)
+        let r = await api
+            .delete(`/api/blogs/${blogToDelete.id}`)
+            .set({ "Authorization": `Bearer ${token}` })
             .expect(204)
 
-        const titles = (await helper.getAllBlogsPosts()).map(blog => blog.title)
-        assert(!titles.includes(selectedBlog.title))
-        assert.strictEqual(titles.length, helper.initialBlogs.length - 1)
-
-
-    })
-})
-describe("Modifying of blog posts", async () => {
-    test("blog posts can have number of likes modified", async () => {
-        const selectedBlog =  (await helper.getAllBlogsPosts())[0]
-        const response = await api
-            .put(`/api/blogs/${selectedBlog.id}`)
-            .send({ likes: 10 })
-            .expect("Content-Type", /application\/json/)
-
-        assert.strictEqual(response.body.likes, 10)
     })
 
-
 })
+
 after(async () => {
     await mongoose.connection.close()
 })

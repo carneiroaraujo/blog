@@ -1,4 +1,5 @@
 const Blog = require("../models/blog")
+const User = require("../models/user")
 
 const initialBlogs = [
     {
@@ -50,11 +51,24 @@ const initialBlogs = [
         // __v: 0
     }
 ]
-
+const initialUsers = [
+    {"_id":"6643cd442a4d958751f6e6ed","username":"john","name":"john","passwordHash":"$2b$10$W.pNIntfQ6upd/Wir4WEjumx6o.uID41LbKdDzZ2d2TUbjdgbwfli","__v":0},
+    // {"_id":"6643cd442a4d958751f6e6ef","username":"mary","name":"mary","passwordHash":"$2b$10$u0vBqsL2LzrsHrwU6CqY2O6aWvognzGDJli8h11.fZBAzgkkoqdMi","__v":0},
+    {"_id":"6643cd452a4d958751f6e6f1","username":"joseph","name":"joseph","passwordHash":"$2b$10$0VHyrflgvbTbTVLuJPZa2eu15yHXdKHbC9Td6WedwJXx9zvbUBTWm","__v":0}
+] 
+async function selectUser() {
+    return (await User.find({}))[0].toJSON()
+}
 async function getAllBlogsPosts() {
     return (await Blog.find({})).map(blog=>blog.toJSON())
 }
+async function getAllUsers() {
+    return (await User.find({})).map(user=>user.toJSON())
+}
 module.exports = {
     initialBlogs,
-    getAllBlogsPosts
+    getAllBlogsPosts,
+    getAllUsers,
+    selectUser,
+    initialUsers
 }
