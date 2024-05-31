@@ -55,9 +55,25 @@ blogsRouter.delete("/:id", middleware.userExtractor, async (request, response) =
     }
 })
 
+blogsRouter.post("/:id/comments", async (request, response) => {
+    const blogId = request.params.id
+    const {content} = request.body 
+    if (!content) {
+        return response.status(401).end()
+    }
+    const blog = await Blog.findById(blogId)
+    if (!blog) {
+        return response.status(401).end()
+    }
+    blog.comments = blog.comments.concat(content)
+    await blog.save()
+    response.status(201).json({content})
+})
+
 blogsRouter.put("/:id", async (request, response) => {
     // console.log(request.body.likes);
     // console.log(await Blog.findOneA(request.params.id));
+    console.log(await Blog.find({}));
     const updated = (await Blog.findByIdAndUpdate(request.params.id, {likes:request.body.likes}, {new:true, runValidators:true}).populate("user", {username:1, id:1, name:1}))
     // console.log(updated);
     response.json(updated)

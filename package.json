@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start:test": "NODE_ENV=test nodemon index.js",
     "test": "NODE_ENV=test node --test",
     "dev": "nodemon index.js"
   },
